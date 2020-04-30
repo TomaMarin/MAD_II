@@ -1,0 +1,95 @@
+import networkx as nx
+import random
+import matplotlib.pyplot as plt
+# from networkx.generators.random_graphs import _random_subset
+import numpy as np
+import copy
+
+
+def link_selection_graph(n, m):
+    G = nx.empty_graph(m)
+    nodes_of_graph = copy.deepcopy(np.array(G.nodes))
+    edges_of_graph = copy.deepcopy(np.array(G.edges))
+
+    nodes_and_probs = list()
+    list_of_nodes = list(nodes_of_graph)
+    list_of_edges = list(edges_of_graph)
+
+    for i in range(len(list_of_nodes)):
+        if i + 1 == len(list_of_nodes):
+            list_of_edges.append((0, i))
+            list_of_edges.append((i, 0))
+        else:
+            list_of_edges.append((i, i + 1))
+            list_of_edges.append((i + 1, i))
+    G.add_edges_from(list_of_edges)
+    # nodes_and_degrees = np.array(copy.deepcopy((G.degree(G.nodes))))
+    # for i in nodes_and_degrees:
+    #     nodes_and_probs.append((i[0], (i[1] / nodes_and_degrees.max(0)[1])))
+
+    while n > len(G.nodes):
+        nodes_and_degrees = np.array(copy.deepcopy((G.degree(G.nodes))))
+        for i in nodes_and_degrees:
+            nodes_and_probs.append((i[0], (i[1] / nodes_and_degrees.max(0)[1])))
+        for j in range(1):
+            random_edge = random.choice(np.array(G.edges))
+            if nodes_and_degrees.max(0)[1] != 1:
+                node_at_end_of_link = random.choice(
+                    [k for k in nodes_and_probs if k[1] > random.random() and np.isin(k[0], np.array(random_edge))])[0]
+            else:
+                node_at_end_of_link = np.random.choice(np.array(random_edge))
+            new_node = len(G.nodes)
+            # list_of_nodes.append(new_node)
+            # list_of_edges.append((new_node, node_at_end_of_link))
+            # list_of_edges.append(( node_at_end_of_link,new_node))
+            G.add_node(new_node)
+            G.add_edge(new_node, node_at_end_of_link)
+            G.add_edge(node_at_end_of_link, new_node)
+    # G.add_edges_from(list_of_edges)
+    return G
+
+
+def copy_link_graph(n, m, p):
+    G = nx.empty_graph(m)
+    nodes_of_graph = copy.deepcopy(np.array(G.nodes))
+    edges_of_graph = copy.deepcopy(np.array(G.edges))
+
+    list_of_nodes = list(nodes_of_graph)
+    list_of_edges = list(edges_of_graph)
+
+    for i in range(len(list_of_nodes)):
+        if i + 1 == len(list_of_nodes):
+            list_of_edges.append((0, i))
+            list_of_edges.append((i, 0))
+        else:
+            list_of_edges.append((i, i + 1))
+            list_of_edges.append((i + 1, i))
+    G.add_edges_from(list_of_edges)
+
+    while n > len(G.nodes):
+
+        for j in range(1):
+            random_node = random.choice(np.array(G.nodes))
+            random_int = random.uniform(0,1)
+            if random_int < p:
+                node_at_end_of_link = random_node
+            else:
+                node_at_end_of_link = np.random.choice([i[1] for i in list(G.edges(random_node))])
+            new_node = len(G.nodes)
+            # list_of_nodes.append(new_node)
+            # list_of_edges.append((new_node, node_at_end_of_link))
+            # list_of_edges.append(( node_at_end_of_link,new_node))
+            G.add_node(new_node)
+            G.add_edge(new_node, node_at_end_of_link)
+            G.add_edge(node_at_end_of_link, new_node)
+        # G.add_edges_from(list_of_edges)
+    return G
+
+
+LSM = link_selection_graph(10, 4)
+CLM = copy_link_graph(10, 4, 0.5)
+plt.subplot(2, 1, 1)
+nx.draw(LSM, with_labels=True)
+plt.subplot(2, 1, 2)
+nx.draw(CLM, with_labels=True)
+plt.show()
