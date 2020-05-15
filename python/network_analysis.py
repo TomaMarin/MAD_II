@@ -1,13 +1,18 @@
 import csv
 import time
+import collections
+import scipy.cluster.hierarchy as shc
+from sklearn import cluster
+from sklearn.cluster import AgglomerativeClustering
 
 import numpy as np
 from timeit import default_timer as timer
+from scipy.cluster.hierarchy import dendrogram, linkage
 from sklearn.cluster import KMeans
-from sklearn.metrics import euclidean_distances, pairwise
 import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.algorithms import community
+from sklearn.metrics import pairwise
 
 
 def is_number(n):
@@ -19,6 +24,11 @@ def is_number(n):
         return False
     return True
 
+def nodes_with_attributes(dataset, attribute_index):
+    nodes_and_attributes= list()
+    for i in range(len(dataset)):
+        nodes_and_attributes.append ((i, dataset[i][attribute_index]))
+    return nodes_and_attributes
 
 def create_net_graph(edges):
     graph = nx.empty_graph()
@@ -160,6 +170,19 @@ def get_total_edges_of_matrix(matrix):
     return total
 
 
+def modularity(euc_matrix, edges, evaluate_data):
+    sum = 0.0
+    for ii, i in enumerate(edges):
+        for ij, j in enumerate(i):
+            dd = 0
+            for xi in edges[ii]:
+                if xi in edges[ij]:
+                    dd += 1
+            if evaluate_data[j][1] == evaluate_data[ii][1]:
+                sum += euc_matrix[j, ij] - (dd / (2 * len(evaluate_data)))
+    return (1 / (2 * len(evaluate_data))) * sum
+
+
 def basic_analysis_of_matrix(matrix):
     nodes_count = len((matrix))
     edges_count = get_total_edges_of_matrix(matrix)
@@ -192,14 +215,14 @@ def incidence_matrix_to_graph(matrix):
 
 
 def k_means(dataset, n_clusters, indexes_to_ignore):
-    indexes_to_read = min(indexes_to_ignore)
-    only_numeric_data = [np.array(row)[0:indexes_to_read] for row in np.array(dataset)[0:len(dataset)]]
-    from_string_to_numbers = [np.array(d, dtype=float) for d in only_numeric_data]
+    # indexes_to_read = min(indexes_to_ignore)
+    # only_numeric_data = [np.array(row)[0:indexes_to_read] for row in np.array(dataset)[0:len(dataset)]]
+    # from_string_to_numbers = [np.array(d, dtype=float) for d in only_numeric_data]
     kmeans5 = KMeans(n_clusters=n_clusters)
-    y_kmeans5 = kmeans5.fit_predict(from_string_to_numbers)
+    y_kmeans5 = kmeans5.fit_predict(dataset)
     print("clusters: \n", kmeans5.cluster_centers_)
-    plt.scatter([np.array(d, dtype=float)[0] for d in from_string_to_numbers],
-                [np.array(d, dtype=float)[1] for d in from_string_to_numbers], c=y_kmeans5, cmap='rainbow')
+    plt.scatter([np.array(d, dtype=float)[0] for d in dataset],
+                [np.array(d, dtype=float)[1] for d in dataset], c=y_kmeans5, cmap='rainbow')
 
 
 def girvan_newman(graph):
@@ -231,14 +254,41 @@ def calculate_efficiency_of_network_conversion(NN, dataset, classIndex):
 def run_conversion(fileName, hasHeader, k, epsilon):
     start1 = time.time()
     dataset = read_data_set(fileName, ",", hasHeader)
+
+    # plt.figure(figsize=(10, 7))
+    # plt.title("Customer Dendograms")
+    # dend = shc.dendrogram(shc.linkage(dataset, method='ward'))
+
     matrix = pairwise.euclidean_distances(np.array(dataset))
     EKNN = knn_and_epsilon_combination_method(matrix, k, epsilon)
-    # export_edges(EKNN,"edges_export.csv")
+    export_edges(EKNN,"edges_export.csv")
     export_nodes_with_attributes(dataset, 7, "nodes_export_by_color.csv")
     end1 = time.time()
-    g =create_net_graph(EKNN)
-    hist_data = nx.degree_histogram(g)
-    plt.hist(hist_data,  facecolor='blue', alpha=0.5)
+    # cluster = AgglomerativeClustering(n_clusters=7, affinity='euclidean', linkage='ward')
+    # cluster.fit_predict(dataset)
+
+    #
+    # fig = plt.figure()
+    # fig.suptitle('Clusters of AgglomerativeClustering  n=7', fontsize=20)
+    # ax = fig.add_subplot(111, aspect='equal')
+    # plt.xlabel('x', fontsize=16)
+    # plt.ylabel('y', fontsize=16)
+
+    # plt.figure(figsize=(10, 7))
+    # ax.scatter(np.array(dataset)[:, 4], np.array(dataset)[:, 5], c=cluster.labels_, cmap='rainbow',  s =1.2)
+    # ax.set_xlim(3, 10)
+    # ax.set_ylim(2, 7.5)
+    # g = create_net_graph(EKNN)
+    # degree_sequence = sorted([d for n, d in g.degree()], reverse=True)  # degree sequence
+    # degreeCount = collections.Counter(degree_sequence)
+    # deg, cnt = zip(*degreeCount.items())
+    # fig, ax = plt.subplots()
+    # plt.bar(deg, cnt, width=0.80, color='b')
+
+    # inc = NN_map_to_incidence_matrix(EKNN)
+    # calculate_efficiency_of_network_conversion(EKNN,dataset,8)
+    # modularity(inc,EKNN,nodes_with_attributes(dataset,8))
+
     plt.show()
     print(end1 - start1)
 
@@ -287,4 +337,3 @@ print("1")
 # find_neighbours_by_epsilon(matrix[0], 0.4, 0)
 # print("DONE")
 run_conversion("processed_diamonds_2.csv", True, 4, 0.4)
-plt.show()
